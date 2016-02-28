@@ -1,4 +1,5 @@
-My Configuration Settings of Ubuntu
+My Configuration Settings for Ubuntu environment and other scripts
+
 
 It includes
 - Scripts which have all the bash macros, automations etc I use.
