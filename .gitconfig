@@ -1,0 +1,7 @@
+[http]
+	proxy = http://10.10.78.22:3128
+[https]
+	proxy = https://10.10.78.22:3128
+[user]
+	name = Devansh
+	email = mr.devanshdalal@gmail.com
