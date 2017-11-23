@@ -1,0 +1,256 @@
+# .bashrc
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+	. /etc/bashrc
+fi
+
+# Uncomment the following line if you don't like systemctl's auto-paging feature:
+# export SYSTEMD_PAGER=
+
+# User specific aliases and functions
+source /home/genstor/.scaligent.sh
+source /home/genstor/.scaligent.sh
+# Set up JAVA_HOME to point to the toolchain.
+export JAVA_HOME=/usr/local/scaligent/toolchain/jvm/jdk1.8
+# include maven and go in path
+export PATH=/usr/local/scaligent/toolchain/local/bin:/usr/local/scaligent/toolchain/apache-maven/apache-maven-3.0.4/bin:/usr/local/scaligent/toolchain/go/1.8/x86_64-linux/go/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:/home/genstor/.local/bin:/home/genstor/bin
+# Set up JAVA_HOME to point to the toolchain.
+export JAVA_HOME=/usr/local/scaligent/toolchain/jvm/jdk1.8
+# include maven and go in path
+export PATH=/usr/local/scaligent/toolchain/local/bin:/usr/local/scaligent/toolchain/apache-maven/apache-maven-3.0.4/bin:/usr/local/scaligent/toolchain/go/1.8/x86_64-linux/go/bin:/usr/local/scaligent/toolchain/local/bin:/usr/local/scaligent/toolchain/apache-maven/apache-maven-3.0.4/bin:/usr/local/scaligent/toolchain/go/1.8/x86_64-linux/go/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:/home/genstor/.local/bin:/home/genstor/bin
+
+
+export MAVEN_HOME=/usr/local/scaligent/toolchain/apache-maven/apache-maven-3.0.4
+export PHANTOM_INSTALL_DIR=/usr/local/scaligent/toolchain/phantomjs/phantomjs-1.9.0-linux-x86_64
+export PHANTOMJS_BIN=$PHANTOM_INSTALL_DIR/bin/phantomjs
+export PATH=/usr/local/scaligent/toolchain/local/bin:$MAVEN_HOME/bin:$PHANTOM_INSTALL_DIR/bin:$PATH
+
+
+
+
+# Callosum related Aliases
+
+###############################################################################
+############################## Personal Additions #############################
+###############################################################################
+
+export TSDEV=1
+export ORION_CLUSTER_NAME=local
+export ORION_ZOO_SERVERS=127.0.0.1:2181
+export GIT_ROOT=~/thoughtspot
+export CLASSPATH=$GIT_ROOT/callosum/common/target/callosum-common-1.0-SNAPSHOT.jar:$GIT_ROOT/callosum/metadata/target/callosum-metadata-1.0-SNAPSHOT.jar:$GIT_ROOT/callosum/data/target/callosum-data-1.0-SNAPSHOT.jar
+export JAVA_HOME=/usr/local/scaligent/toolchain/jvm/jdk1.8
+export MAVEN_HOME=/usr/local/scaligent/toolchain/apache-maven/apache-maven-3.0.4
+export MAVEN_OPTS="-Xms1024m -Xmx4096m -XX:PermSize=1024m"
+export PATH=$GIT_ROOT:$CLASSPATH:$JAVA_HOME/bin:$MAVEN_HOME/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games
+
+alias tql='~/thoughtspot/build-opt/etl/sqlparser/sql_cli --falcon_manager_address "zoo_server {host: \"localhost\" port: 2181} cluster_name: \"local\" service_name:\"falcon_manager\" task_name: \"falcon_manager\" port_name:\"rpc\"" --falcon_worker_address "zoo_server {host: \"localhost\" port: 2181} cluster_name: \"local\" service_name:\"falcon\" task_name: \"worker\" port_name:\"rpc\""'
+
+# Directory paths
+tlc () {
+    cd /usr/local/scaligent/toolchain
+}
+ts () {
+    cd $GIT_ROOT
+}
+
+# Speedup Additions
+alias srch="grep -rl"
+
+# Faster Work additions
+longestReboot () {
+  pushd ~
+  cd ~/thoughtspot
+  sudo -v
+  scons -c
+  mvn clean
+  ./testing/cluster_tool.sh --build start --datadir datasets/ssbm/tpch.5K --clean
+  popd
+}
+
+rebootCluster () {
+  pushd ~
+  cd ~/thoughtspot
+  sudo -v
+  ./testing/cluster_tool.sh --build start --datadir datasets/ssbm/tpch.5K --clean
+  popd
+}
+
+pushCluster () {
+  pushd ~
+  cd ~/thoughtspot
+  sudo -v
+  ./testing/cluster_tool.sh start --datadir datasets/ssbm/tpch.5K --clean
+  popd
+}
+
+pushCallosum () {
+  pushd ~
+  cd ~/thoughtspot
+  ./build-out/orion/client/tscli.par --testdev service push tomcat production/orion/tomcat/tomcat_dev.config
+  popd
+}
+
+rebootCallosum () {
+  pushd ~
+  cd ~/thoughtspot/callosum
+  mvn package -DskipTests=true
+  pushCallosum
+  popd
+}
+
+pushBlink () {
+  sudo -v
+  pushd ~
+  cd ~/thoughtspot
+  ./build-opt/orion/client/tscli.par --testdev service push nginx production/orion/nginx/nanny_dev_local.config
+  popd
+}
+
+rebootBlink () {
+  pushd ~
+  cd ~/thoughtspot/blink
+  grunt package
+  pushBlink
+  popd
+}
+
+pushNginx () {
+  pushBlink
+}
+
+rebootNginx () {
+  pushd ~
+  cd ~/thoughtspot
+  scons mode=opt -j12 net/nginx
+  pushNginx
+  popd
+}
+
+restartService () {
+  pushd ~
+  cd ~/thoughtspot
+  ./build-opt/orion/client/tscli.par --adv --zoo localhost --cluster local service restart $1
+  popd
+}
+
+checkStyle () {
+  local _styleDir="third-party/checkstyle/checkstyle-6.17";
+  local _styleJar="$_styleDir/checkstyle-6.17-all.jar";
+  local _cp="$_styleJar:${CLASSPATH}";
+  local _main="com.puppycrawl.tools.checkstyle.Main";
+  local _cfg="$_styleDir/checkstyle-config.xml";
+  pushd ~
+  cd ~/thoughtspot
+  local java_files=$(git status -s|grep "\.java"|cut -d " " -f 3|tr '\n' ' ')
+  if [ "$java_files" = "" ]
+  then
+    echo "No files to check !";
+  else
+    java -Dsamedir=$_styleDir -cp $_cp $_main -c $_cfg $java_files
+  fi
+  popd
+}
+
+cleanState() {
+ ~/thoughtspot/callosum/utilities/metadata_cleanup.py
+ ~/thoughtspot/callosum/utilities/memcache_clear.sh
+}
+
+# To get karma working on ubuntu
+export CHROME_BIN=/usr/bin/google-chrome
+
+# To get IBUS warning removed from Webstorm
+export IBUS_ENABLE_SYNC_MODE=1
+
+# ls aliases
+if [ `uname` == "Linux" ]; then
+    alias l="ls"
+    alias ls="ls --color"
+    alias ll="ls -lh --color"
+    alias la="ls -lA --color"
+else
+    alias l="ls"
+    alias ls="ls -G"
+    alias ll="ls -lhG"
+    alias la="ls -lAG"
+fi
+
+# Safe file management aliases.
+alias cp="cp -iv"
+alias rm="rm -i"
+alias mv="mv -i"
+
+# Quick directory movement.
+alias ..="cd .."
+alias ...="cd ../.."
+alias ....="cd ../../.."
+
+# tumx aliases.
+# Force tmux to use 256 colours.
+alias tmux="tmux -2"
+alias tma="tmux -2 attach-session -t"
+
+# History search.
+alias grep="grep --color=auto"
+
+# Git aliases.
+alias g="git"
+# Lists the branches which match the regex.
+gb () {
+    g branch --list $@
+}
+# Pretty prints the git log as a tree.
+gl () {
+    g log --pretty=format:"%Cred%h%Creset | %Cgreen%<(25)%an%Creset | %s"
+}
+# Gets the current git status.
+gs () {
+    g status
+}
+# Checkout master
+gcm () {
+    g checkout master
+}
+# Pull + Rebase
+gpr () {
+    g pull --rebase
+}
+
+
+function review() {
+#  branch=$(git_branch)
+  if [ $# -ge 1 ]; then
+    branch=$1; shift
+  fi
+  reviewers=""
+  if [ $# -ge 1 ]; then
+    names=",d:deshwal,s:satyam,sk:sandeep,r:rahul,v:vaibhav.agarwal,n:nitish.rajguru,"
+    reviewers=""
+    for i in $(echo $@ | tr "," "\n")
+    do
+      if [ $i = "c" ]; then
+        members=$(gerrit ls-members CallosumDevs | tail -n +2 | cut -f4)
+        for j in $members
+        do
+          reviewers=$reviewers,r=$j
+        done
+      else
+        reviewers=$reviewers,r=$(expr $names : ".*,$i:\([^,]*\),.*")@thoughtspot.com
+      fi
+    done
+    reviewers=$(echo $reviewers | sed s/./%/1)
+  fi
+  echo "Pushing to $branch.  Reviewers=$reviewers"
+  cmd="git push --no-thin origin HEAD:refs/for/$branch$reviewers"
+  $cmd
+}
+
+
+
+# To get rid of brackted paste mode.
+printf "\e[?2004l"
+
+# trigger java gc manually for all jps
+alias jgc='for i in $( jps ); do jcmd $i GC.run; done'
